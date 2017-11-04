@@ -21,3 +21,6 @@ Route::get('/home', 'HomeController@index')->name('home');
 Route::get('/test', 'UploadController@oauth');
 Route::post('/upload', 'UploadController@uploadSubmit');
 Route::post('/product', 'UploadController@postProduct');
+
+Route::resource('gcalendar', 'GoogleCalendarController');
+Route::get('oauth', ['as' => 'oauthCallback', 'uses' => 'GoogleCalendarController@oauth']);
