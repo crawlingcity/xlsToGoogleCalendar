@@ -20,11 +20,7 @@ class SiteController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function index() {
-        session_start();
-        if (isset($_SESSION['access_token']) && $_SESSION['access_token']) {
-            return view('home');
-        } else {
-            return redirect()->route('oauthCallback');
-        }
+        return redirect()->route('oauthCallback');
+        
     }
 }

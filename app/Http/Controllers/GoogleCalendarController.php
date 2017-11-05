@@ -31,6 +31,11 @@ class GoogleCalendarController extends Controller {
     }
     
     public function getClient() {
+        $client = new Google_Client();
+        $client->setAuthConfig(CLIENT_SECRET_PATH);
+        $client->addScope(Google_Service_Calendar::CALENDAR);
+        $guzzleClient = new Client(array('curl' => array(CURLOPT_SSL_VERIFYPEER => false)));
+        $client->setHttpClient($guzzleClient);
         return $this->client;
     }
     

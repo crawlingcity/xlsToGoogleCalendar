@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use DateTime;
 use Google_Service_Calendar;
 use Google_Service_Calendar_Event;
 use Illuminate\Http\Request;
@@ -11,7 +10,7 @@ use PHPExcel_IOFactory;
 class UploadController extends Controller {
     
     
-    public function deleteEvents() {
+    public function deleteAllEvents() {
         /**
          * @var $event Google_Service_Calendar_Event
          */
@@ -21,13 +20,22 @@ class UploadController extends Controller {
         $client->setAccessToken($_SESSION['access_token']);
         $service = new Google_Service_Calendar($client);
         $events = $service->events->listEvents($flaviaCalendar);
-        $total = 0;
-        foreach ($events->getItems() as $event) {
-            $service->events->delete($flaviaCalendar,$event->getId());
-            $total++;
-            
+        while (true) {
+            $pageToken = $events->getNextPageToken();
+            if ($pageToken) {
+                $optParams = array('pageToken' => $pageToken);
+                $events = $service->events->listEvents($flaviaCalendar, $optParams);
+                if (count($events) > 0) {
+                    foreach ($events->getItems() as $event) {
+                        $service->events->delete($flaviaCalendar, $event->getId());
+                    }
+                }
+            } else {
+                break;
+            }
         }
-        die;
+        
+        return response()->json(['status' => 'success', 'message' => 'Events Deleted']);
     }
     
     /**
@@ -37,6 +45,7 @@ class UploadController extends Controller {
      */
     public function uploadSubmit(Request $request) {
         session_start();
+        self::deleteAllEvents();
         $inputFileName = $request->file('resume')->getPath() . '/' . $request->file('resume')->getFilename();
         
         try {
@@ -102,31 +111,47 @@ class UploadController extends Controller {
                 continue;
             }
             
-            
             if (array_key_exists('folga', $schedule)) {
-                continue;
+                $event = new Google_Service_Calendar_Event(array(
+                    'summary' => 'FOLGA',
+                    'location' => 'Tv. Padre António da Silva Ramalho 21, 4460-745 Custóias',
+                    'description' => 'enjoy the rest <3',
+                    'start' => array(
+                        'date' => '2017-11-' . $dayToInsert,
+                        'timeZone' => 'Europe/Lisbon',
+                    ),
+                    'end' => array(
+                        'date' => '2017-11-' . $dayToInsert,
+                        'timeZone' => 'Europe/Lisbon',
+                    ),
+                    'reminders' => array(
+                        'useDefault' => false,
+                        'overrides' => array(
+                            array('method' => 'popup', 'minutes' => 12 * 60),
+                        ),
+                    )
+                ));
+            } else {
+                $event = new Google_Service_Calendar_Event(array(
+                    'summary' => 'H: ' . substr($schedule['in'], 0, 5) . '/' . substr($schedule['out'], 0, 5),
+                    'location' => 'Exe Almada Porto, Rua do Almada 361, 4050-032 Porto, Portugal',
+                    'description' => 'mais um dia de trabalho',
+                    'start' => array(
+                        'dateTime' => '2017-11-' . $dayToInsert . 'T' . $schedule['in'],
+                        'timeZone' => 'Europe/Lisbon',
+                    ),
+                    'end' => array(
+                        'dateTime' => '2017-11-' . $dayToInsert . 'T' . $schedule['out'],
+                        'timeZone' => 'Europe/Lisbon',
+                    ),
+//                    'reminders' => array(
+//                        'useDefault' => false,
+//                        'overrides' => array(
+//                            array('method' => 'popup', 'minutes' => 24 * 60),
+//                        ),
+//                    )
+                ));
             }
-            
-            $event = new Google_Service_Calendar_Event(array(
-                'summary' => 'H: ' . substr($schedule['in'], 0, 5) . '/' . substr($schedule['out'], 0, 5),
-                'location' => 'Exe Almada Porto, Rua do Almada 361, 4050-032 Porto, Portugal',
-                'description' => 'mais um dia de trabalho',
-                'start' => array(
-                    'dateTime' => '2017-11-' . $dayToInsert . 'T' . $schedule['in'],
-                    'timeZone' => 'Europe/Lisbon',
-                ),
-                'end' => array(
-                    'dateTime' => '2017-11-' . $dayToInsert . 'T' . $schedule['out'],
-                    'timeZone' => 'Europe/Lisbon',
-                ),
-                //        'reminders' => array(
-                //            'useDefault' => FALSE,
-                //            'overrides' => array(
-                //                array('method' => 'email', 'minutes' => 24 * 60),
-                //                array('method' => 'popup', 'minutes' => 10),
-                //            ),
-            ));
-            
             
             $service->events->insert($flaviaCalendar, $event);
             $dayToInsert++;
